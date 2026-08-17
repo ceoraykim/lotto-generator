@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>로또 추첨기</title>
+<style>
+  :root{color-scheme:light}
+  body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}
+  img{max-width:100%}
+</style>
+<style>
+  :root {
+    --bg: #14121a;
+    --bg-glow: radial-gradient(circle at 50% -10%, #262032 0%, #14121a 55%);
+    --surface: #1d1a24;
+    --surface-2: #24202d;
+    --border: #322c3b;
+    --text: #f1ecf5;
+    --text-muted: #948d9f;
+    --text-faint: #666071;
+    --accent: #d9a94b;
+    --accent-dim: #8a6f30;
+    --accent-text: #241b06;
+
+    --yellow-a: #ffd966; --yellow-b: #e7a900; --yellow-fg: #4a3600;
+    --blue-a: #74c9ff; --blue-b: #1f80d6; --blue-fg: #ffffff;
+    --red-a: #ff8f8f; --red-b: #e0393f; --red-fg: #ffffff;
+    --gray-a: #cfcfd8; --gray-b: #8e8d9c; --gray-fg: #2a2833;
+    --green-a: #b3e26a; --green-b: #4f9a2c; --green-fg: #16330a;
+  }
+
+  * { box-sizing: border-box; }
+
+  @font-face {
+    font-family: 'Manrope';
+    src: local('Manrope');
+    font-weight: 400 900;
+  }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+  }
+
+  body {
+    min-height: 100%;
+    background: var(--bg-glow);
+    color: var(--text);
+    font-family: 'Pretendard', 'Apple SD Gothic Neo', 'Malgun Gothic', 'Manrope', system-ui, -apple-system, sans-serif;
+    font-variant-numeric: tabular-nums;
+    display: flex;
+    justify-content: center;
+    padding: clamp(20px, 5vw, 56px) 16px 64px;
+  }
+
+  .page {
+    width: 100%;
+    max-width: 460px;
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+  }
+
+  header {
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .eyebrow {
+    font-size: 0.72rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 700;
+  }
+
+  h1 {
+    margin: 0;
+    font-size: clamp(1.6rem, 6vw, 2.1rem);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+  }
+
+  .sub {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+  }
+
+  .stage {
+    background: linear-gradient(180deg, var(--surface) 0%, var(--surface-2) 100%);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: clamp(20px, 5vw, 30px) clamp(16px, 4vw, 26px) 26px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    box-shadow: 0 20px 40px -24px rgba(0, 0, 0, 0.6);
+  }
+
+  .draw-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    color: var(--text-faint);
+    font-size: 0.78rem;
+  }
+
+  .draw-meta .count {
+    color: var(--text-muted);
+    font-weight: 600;
+  }
+
+  .balls-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(6px, 2vw, 10px);
+    flex-wrap: nowrap;
+  }
+
+  .plus {
+    color: var(--text-faint);
+    font-size: 1.1rem;
+    font-weight: 300;
+    padding-bottom: 2px;
+  }
+
+  .bonus-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .bonus-label {
+    font-size: 0.66rem;
+    letter-spacing: 0.1em;
+    color: var(--text-faint);
+    text-transform: uppercase;
+  }
+
+  .ball {
+    --a: var(--gray-a);
+    --b: var(--gray-b);
+    --fg: var(--gray-fg);
+    width: clamp(40px, 10.5vw, 54px);
+    height: clamp(40px, 10.5vw, 54px);
+    border-radius: 50%;
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: clamp(0.95rem, 3.3vw, 1.2rem);
+    color: var(--fg);
+    background:
+      radial-gradient(circle at 32% 26%, rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0) 42%),
+      radial-gradient(circle at 68% 82%, var(--b), var(--b) 0%, transparent 70%),
+      linear-gradient(160deg, var(--a), var(--b));
+    box-shadow:
+      inset 0 -4px 6px rgba(0, 0, 0, 0.25),
+      inset 0 3px 3px rgba(255, 255, 255, 0.35),
+      0 6px 14px -6px rgba(0, 0, 0, 0.55);
+    transform: scale(0);
+    opacity: 0;
+  }
+
+  .ball.in {
+    animation: ballDrop 0.85s ease forwards;
+    animation-delay: var(--d, 0s);
+  }
+
+  .ball.small {
+    width: clamp(24px, 6.4vw, 30px);
+    height: clamp(24px, 6.4vw, 30px);
+    font-size: clamp(0.62rem, 2.6vw, 0.74rem);
+    box-shadow:
+      inset 0 -2px 3px rgba(0, 0, 0, 0.25),
+      inset 0 2px 2px rgba(255, 255, 255, 0.35),
+      0 3px 6px -3px rgba(0, 0, 0, 0.5);
+  }
+
+  .ball.c1 { --a: var(--yellow-a); --b: var(--yellow-b); --fg: var(--yellow-fg); }
+  .ball.c2 { --a: var(--blue-a); --b: var(--blue-b); --fg: var(--blue-fg); }
+  .ball.c3 { --a: var(--red-a); --b: var(--red-b); --fg: var(--red-fg); }
+  .ball.c4 { --a: var(--gray-a); --b: var(--gray-b); --fg: var(--gray-fg); }
+  .ball.c5 { --a: var(--green-a); --b: var(--green-b); --fg: var(--green-fg); }
+
+  @keyframes ballDrop {
+    0% { transform: translateY(-280%) scaleX(0.7) scaleY(0.7); opacity: 0; }
+    10% { opacity: 1; }
+    46% { transform: translateY(0%) scaleX(1) scaleY(1); opacity: 1; }
+    52% { transform: translateY(2%) scaleX(1.18) scaleY(0.82); }
+    60% { transform: translateY(-18%) scaleX(0.95) scaleY(1.06); }
+    74% { transform: translateY(0%) scaleX(1.05) scaleY(0.97); }
+    86% { transform: translateY(-6%) scaleX(0.99) scaleY(1.02); }
+    100% { transform: translateY(0%) scaleX(1) scaleY(1); opacity: 1; }
+  }
+
+  button.draw {
+    appearance: none;
+    border: none;
+    cursor: pointer;
+    width: 100%;
+    padding: 15px 18px;
+    border-radius: 14px;
+    font-size: 1.02rem;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    color: var(--accent-text);
+    background: linear-gradient(180deg, #f0c565, var(--accent) 55%, var(--accent-dim));
+    box-shadow: 0 12px 24px -12px rgba(217, 169, 75, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
+  }
+
+  button.draw:active {
+    transform: translateY(1px) scale(0.99);
+    box-shadow: 0 6px 14px -10px rgba(217, 169, 75, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  }
+
+  button.draw:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+  }
+
+  button.draw:disabled {
+    opacity: 0.65;
+    cursor: default;
+  }
+
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 16px;
+    justify-content: center;
+    font-size: 0.72rem;
+    color: var(--text-faint);
+  }
+
+  .legend span {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .legend i {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+
+  .legend .c1 { background: var(--yellow-a); }
+  .legend .c2 { background: var(--blue-a); }
+  .legend .c3 { background: var(--red-a); }
+  .legend .c4 { background: var(--gray-a); }
+  .legend .c5 { background: var(--green-a); }
+
+  .history {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .history h2 {
+    margin: 0;
+    font-size: 0.78rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    font-weight: 700;
+  }
+
+  .history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .history-empty {
+    color: var(--text-faint);
+    font-size: 0.85rem;
+    padding: 14px 4px;
+    text-align: center;
+    border: 1px dashed var(--border);
+    border-radius: 12px;
+  }
+
+  .history-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 10px 12px;
+    overflow-x: auto;
+  }
+
+  .history-row time {
+    flex: 0 0 auto;
+    font-size: 0.7rem;
+    color: var(--text-faint);
+    width: 64px;
+  }
+
+  .history-balls {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    flex: 1 1 auto;
+  }
+
+  .history-plus {
+    color: var(--text-faint);
+    font-size: 0.75rem;
+    flex: 0 0 auto;
+  }
+
+  .odds {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .odds h2 {
+    margin: 0;
+    font-size: 0.78rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    font-weight: 700;
+  }
+
+  .odds-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .odds-list li {
+    display: grid;
+    grid-template-columns: 40px 1fr auto;
+    align-items: center;
+    gap: 10px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 10px 12px;
+  }
+
+  .odds-rank {
+    font-weight: 800;
+    font-size: 0.82rem;
+    color: var(--accent);
+  }
+
+  .odds-desc {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+  }
+
+  .odds-prob {
+    font-weight: 700;
+    font-size: 0.85rem;
+    color: var(--text);
+    white-space: nowrap;
+  }
+
+  .odds-note {
+    margin: 0;
+    font-size: 0.72rem;
+    color: var(--text-faint);
+    text-align: center;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ball.in {
+      animation: none;
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+</style>
+</head>
+<body>
+
+<div class="page">
+  <header>
+    <p class="eyebrow">Lotto 6/45</p>
+    <h1>로또 번호 추첨기</h1>
+    <p class="sub">1부터 45까지 중 중복 없이 6개, 보너스 번호 1개를 뽑아드려요</p>
+  </header>
+
+  <div class="stage">
+    <div class="draw-meta">
+      <span>이번 추첨</span>
+      <span class="count" id="drawCount"></span>
+    </div>
+
+    <div class="balls-row" id="mainBalls"></div>
+
+    <div class="balls-row">
+      <span class="plus">+</span>
+      <div class="bonus-wrap">
+        <span class="bonus-label">보너스</span>
+        <div id="bonusBall"></div>
+      </div>
+    </div>
+
+    <button class="draw" id="drawBtn" type="button">추첨하기</button>
+
+    <div class="legend">
+      <span><i class="c1"></i>1–10</span>
+      <span><i class="c2"></i>11–20</span>
+      <span><i class="c3"></i>21–30</span>
+      <span><i class="c4"></i>31–40</span>
+      <span><i class="c5"></i>41–45</span>
+    </div>
+  </div>
+
+  <div class="history">
+    <h2>이전 추첨 결과</h2>
+    <div class="history-list" id="historyList"></div>
+  </div>
+
+  <div class="odds">
+    <h2>당첨 확률</h2>
+    <ul class="odds-list">
+      <li><span class="odds-rank">1등</span><span class="odds-desc">6개 번호 일치</span><span class="odds-prob">1 / 8,145,060</span></li>
+      <li><span class="odds-rank">2등</span><span class="odds-desc">5개 번호 + 보너스 일치</span><span class="odds-prob">1 / 1,357,510</span></li>
+      <li><span class="odds-rank">3등</span><span class="odds-desc">5개 번호 일치</span><span class="odds-prob">1 / 35,724</span></li>
+      <li><span class="odds-rank">4등</span><span class="odds-desc">4개 번호 일치</span><span class="odds-prob">1 / 733</span></li>
+      <li><span class="odds-rank">5등</span><span class="odds-desc">3개 번호 일치</span><span class="odds-prob">1 / 45</span></li>
+    </ul>
+    <p class="odds-note">로또 6/45 공식 등수 기준 확률이며, 실제 추첨 결과를 보장하지 않아요</p>
+  </div>
+</div>
+
+<script>
+  (function () {
+    var STORAGE_KEY = 'lotto-draw-history-v1';
+    var MAX_KEEP = 6;
+
+    function colorClass(n) {
+      if (n <= 10) return 'c1';
+      if (n <= 20) return 'c2';
+      if (n <= 30) return 'c3';
+      if (n <= 40) return 'c4';
+      return 'c5';
+    }
+
+    function drawOnce() {
+      var pool = [];
+      for (var i = 1; i <= 45; i++) pool.push(i);
+      for (var i2 = pool.length - 1; i2 > 0; i2--) {
+        var j = Math.floor(Math.random() * (i2 + 1));
+        var tmp = pool[i2]; pool[i2] = pool[j]; pool[j] = tmp;
+      }
+      var picked = pool.slice(0, 7);
+      var bonus = picked.pop();
+      var main = picked.sort(function (a, b) { return a - b; });
+      return { main: main, bonus: bonus, ts: Date.now() };
+    }
+
+    function loadHistory() {
+      try {
+        var raw = localStorage.getItem(STORAGE_KEY);
+        return raw ? JSON.parse(raw) : [];
+      } catch (e) {
+        return [];
+      }
+    }
+
+    function saveHistory(list) {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+      } catch (e) {}
+    }
+
+    function formatTime(ts) {
+      var d = new Date(ts);
+      var pad = function (n) { return String(n).padStart(2, '0'); };
+      return pad(d.getMonth() + 1) + '/' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+    }
+
+    function makeBall(n, opts) {
+      opts = opts || {};
+      var el = document.createElement('div');
+      el.className = 'ball ' + colorClass(n) + (opts.small ? ' small' : '');
+      el.textContent = n;
+      return el;
+    }
+
+    var mainBallsEl = document.getElementById('mainBalls');
+    var bonusBallEl = document.getElementById('bonusBall');
+    var drawBtn = document.getElementById('drawBtn');
+    var drawCountEl = document.getElementById('drawCount');
+    var historyListEl = document.getElementById('historyList');
+
+    var history = loadHistory();
+
+    function renderCurrent(entry, animate) {
+      mainBallsEl.innerHTML = '';
+      entry.main.forEach(function (n, idx) {
+        var ball = makeBall(n);
+        if (animate) {
+          ball.classList.add('in');
+          ball.style.setProperty('--d', (idx * 0.09) + 's');
+        } else {
+          ball.style.transform = 'scale(1)';
+          ball.style.opacity = '1';
+        }
+        mainBallsEl.appendChild(ball);
+      });
+
+      bonusBallEl.innerHTML = '';
+      var bonusBall = makeBall(entry.bonus);
+      if (animate) {
+        bonusBall.classList.add('in');
+        bonusBall.style.setProperty('--d', (entry.main.length * 0.09 + 0.08) + 's');
+      } else {
+        bonusBall.style.transform = 'scale(1)';
+        bonusBall.style.opacity = '1';
+      }
+      bonusBallEl.appendChild(bonusBall);
+
+      drawCountEl.textContent = formatTime(entry.ts) + ' 추첨';
+    }
+
+    function renderHistory() {
+      var previous = history.slice(1, 1 + 5);
+      historyListEl.innerHTML = '';
+
+      if (previous.length === 0) {
+        var empty = document.createElement('div');
+        empty.className = 'history-empty';
+        empty.textContent = '아직 이전 기록이 없어요';
+        historyListEl.appendChild(empty);
+        return;
+      }
+
+      previous.forEach(function (entry) {
+        var row = document.createElement('div');
+        row.className = 'history-row';
+
+        var time = document.createElement('time');
+        time.textContent = formatTime(entry.ts);
+        row.appendChild(time);
+
+        var ballsWrap = document.createElement('div');
+        ballsWrap.className = 'history-balls';
+        entry.main.forEach(function (n) {
+          ballsWrap.appendChild(makeBall(n, { small: true }));
+        });
+        row.appendChild(ballsWrap);
+
+        var plus = document.createElement('span');
+        plus.className = 'history-plus';
+        plus.textContent = '+';
+        row.appendChild(plus);
+
+        ballsWrap = document.createElement('div');
+        ballsWrap.className = 'history-balls';
+        ballsWrap.appendChild(makeBall(entry.bonus, { small: true }));
+        row.appendChild(ballsWrap);
+
+        historyListEl.appendChild(row);
+      });
+    }
+
+    function doDraw(animate) {
+      var entry = drawOnce();
+      history.unshift(entry);
+      history = history.slice(0, MAX_KEEP);
+      saveHistory(history);
+      renderCurrent(entry, animate);
+      renderHistory();
+    }
+
+    drawBtn.addEventListener('click', function () {
+      drawBtn.disabled = true;
+      doDraw(true);
+      window.setTimeout(function () {
+        drawBtn.disabled = false;
+      }, 1550);
+    });
+
+    if (history.length > 0) {
+      renderCurrent(history[0], false);
+      renderHistory();
+    } else {
+      doDraw(true);
+    }
+  })();
+</script>
+
+</body>
+</html>
